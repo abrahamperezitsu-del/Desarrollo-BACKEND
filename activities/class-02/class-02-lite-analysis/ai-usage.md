@@ -1,0 +1,3 @@
+Interacciones y Solicitudes Realizadas
+
+Le pedi a la ia que realizara una tabla.md con la informacion que yo le brindara respectivas a la primera tabla, tambien se la mande despues pidiendole que terminara los espacios vacios y que me los explicara, despues use el dictado por voz para que escribiera por mi las respuestas de las preguntas de la siguiente diapositiva, las cuales respondi mayormente con la informacion que habia obtenido de la primera tabla y por ultimo le pedi que me hiciera el comparision.md
