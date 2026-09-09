@@ -3,8 +3,7 @@
 // class 04, with one plumbing change already made: respondError now lives
 // in the shared src/http/respond-error.js (auth and middleware use it too).
 //
-// Target change: once app.js protects this router with `authenticate`
-// (station 5), every handler passes req.auth as the FIRST argument to the
+// Station 5: every handler passes req.auth as the FIRST argument to the
 // service operations: listRequests(req.auth, {...}), getRequest(req.auth,
 // id), createRequest(req.auth, req.body), patchRequest(req.auth, id,
 // req.body), getHistory(req.auth, id).
@@ -25,7 +24,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const { status, priority } = req.query;
-    res.status(200).json(await listRequests({ status, priority }));
+    res.status(200).json(await listRequests(req.auth, { status, priority }));
   } catch (error) {
     respondError(res, error);
   }
@@ -33,7 +32,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    res.status(200).json(await getRequest(Number(req.params.id)));
+    res.status(200).json(await getRequest(req.auth, Number(req.params.id)));
   } catch (error) {
     respondError(res, error);
   }
@@ -41,7 +40,7 @@ router.get('/:id', async (req, res) => {
 
 router.get('/:id/history', async (req, res) => {
   try {
-    res.status(200).json(await getHistory(Number(req.params.id)));
+    res.status(200).json(await getHistory(req.auth, Number(req.params.id)));
   } catch (error) {
     respondError(res, error);
   }
@@ -49,7 +48,7 @@ router.get('/:id/history', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    res.status(201).json(await createRequest(req.body));
+    res.status(201).json(await createRequest(req.auth, req.body));
   } catch (error) {
     respondError(res, error);
   }
@@ -57,7 +56,7 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    res.status(200).json(await patchRequest(Number(req.params.id), req.body));
+    res.status(200).json(await patchRequest(req.auth, Number(req.params.id), req.body));
   } catch (error) {
     respondError(res, error);
   }

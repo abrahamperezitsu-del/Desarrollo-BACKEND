@@ -24,6 +24,23 @@ import { respondError } from '../http/respond-error.js';
 import { verifyToken } from '../modules/auth/token.js';
 
 export async function authenticate(req, res, next) {
-  // TODO (station 5)
-  respondError(res, new Error('TODO: authenticate is not implemented yet.'));
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return respondError(res, new AppError('auth', 'AUTHENTICATION_REQUIRED', 'A valid Bearer token is required.'));
+  }
+
+  const token = authHeader.slice(7);
+
+  if (token.length === 0) {
+    return respondError(res, new AppError('auth', 'AUTHENTICATION_REQUIRED', 'A valid Bearer token is required.'));
+  }
+
+  try {
+    const payload = await verifyToken(token);
+    req.auth = { userId: payload.sub, role: payload.role };
+    next();
+  } catch {
+    return respondError(res, new AppError('auth', 'INVALID_TOKEN', 'The access token is invalid or has expired.'));
+  }
 }

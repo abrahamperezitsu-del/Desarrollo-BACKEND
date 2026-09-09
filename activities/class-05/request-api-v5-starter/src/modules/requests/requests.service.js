@@ -36,10 +36,16 @@ import {
 } from './requests.store.js';
 import { mapRequestRow, mapHistoryRow } from './request.mapper.js';
 import { STATUSES, isValidStatus, isTerminal, canTransition } from './request-status.js';
+import {
+  canEditContent,
+  canChangePriority,
+  canChangeStatus
+} from './request.policy.js';
 import { AppError } from '../../app-error.js';
 
 const PRIORITIES = ['low', 'medium', 'high'];
 const UPDATABLE_FIELDS = ['title', 'description', 'priority', 'status'];
+const SERVER_CONTROLLED_FIELDS = ['id', 'createdBy', 'createdAt', 'updatedAt', 'changedBy'];
 
 function assertValidPriority(priority) {
   if (!PRIORITIES.includes(priority)) {
@@ -48,7 +54,21 @@ function assertValidPriority(priority) {
   }
 }
 
-export async function listRequests(filters) {
+function assertRequesterScope(actor, resourceCreatedBy) {
+  // Legacy requests (created_by IS NULL) are visible only to agents
+  if (resourceCreatedBy === null) {
+    if (actor.role !== 'agent') {
+      throw new AppError('resource', 'REQUEST_NOT_FOUND', `Request not found.`);
+    }
+    return;
+  }
+  // Requester can only see their own requests
+  if (actor.role === 'requester' && resourceCreatedBy !== actor.userId) {
+    throw new AppError('resource', 'REQUEST_NOT_FOUND', `Request not found.`);
+  }
+}
+
+export async function listRequests(actor, filters) {
   if (filters.status !== undefined && !isValidStatus(filters.status)) {
     throw new AppError('contract', 'INVALID_FILTER',
       `Unknown status "${filters.status}". Valid values: ${STATUSES.join(', ')}.`);
@@ -57,20 +77,43 @@ export async function listRequests(filters) {
     throw new AppError('contract', 'INVALID_FILTER',
       `Unknown priority "${filters.priority}". Valid values: ${PRIORITIES.join(', ')}.`);
   }
-  const rows = await findAll(filters);
+
+  // Requester sees only their own; agent sees everything (including legacy)
+  const scopeFilters = { ...filters };
+  if (actor.role === 'requester') {
+    scopeFilters.createdBy = actor.userId;
+  }
+
+  const rows = await findAll(scopeFilters);
   return rows.map(mapRequestRow);
 }
 
-export async function getRequest(id) {
+export async function getRequest(actor, id) {
   const row = await findById(id);
   if (!row) {
     throw new AppError('resource', 'REQUEST_NOT_FOUND', `Request ${id} does not exist.`);
   }
+  assertRequesterScope(actor, row.created_by);
   return mapRequestRow(row);
 }
 
-export async function createRequest(input) {
-  const { title, description, priority } = input ?? {};
+export async function createRequest(actor, input) {
+  const body = input ?? {};
+
+  // Reject server-controlled fields in POST body
+  for (const field of SERVER_CONTROLLED_FIELDS) {
+    if (field in body) {
+      throw new AppError('contract', 'SERVER_CONTROLLED_FIELD',
+        `The field "${field}" is controlled by the server.`);
+    }
+  }
+  // Status is also server-controlled on creation
+  if ('status' in body) {
+    throw new AppError('contract', 'SERVER_CONTROLLED_FIELD',
+      'The field "status" is controlled by the server.');
+  }
+
+  const { title, description, priority } = body;
 
   if (typeof title !== 'string' || title.trim() === '') {
     throw new AppError('contract', 'TITLE_REQUIRED', 'A request needs a non-empty title.');
@@ -83,16 +126,25 @@ export async function createRequest(input) {
     const created = await insertRequest({
       title: title.trim(),
       description: typeof description === 'string' ? description : null,
-      priority: priority ?? 'medium'
+      priority: priority ?? 'medium',
+      createdBy: actor.userId
     }, client);
-    await insertStatusHistory(created.id, null, created.status, client);
+    await insertStatusHistory(created.id, null, created.status, actor.userId, client);
     return created;
   });
 
   return mapRequestRow(row);
 }
 
-export async function patchRequest(id, body) {
+export async function patchRequest(actor, id, body) {
+  // Reject server-controlled fields in PATCH body
+  for (const field of SERVER_CONTROLLED_FIELDS) {
+    if (field in body) {
+      throw new AppError('contract', 'SERVER_CONTROLLED_FIELD',
+        `The field "${field}" is controlled by the server.`);
+    }
+  }
+
   const changes = {};
   for (const field of UPDATABLE_FIELDS) {
     if (body?.[field] !== undefined) changes[field] = body[field];
@@ -120,20 +172,42 @@ export async function patchRequest(id, body) {
       throw new AppError('resource', 'REQUEST_NOT_FOUND', `Request ${id} does not exist.`);
     }
 
+    // Ownership check: foreign request -> same 404 as missing
+    assertRequesterScope(actor, current.created_by);
+
+    // Authorization: apply policy BEFORE writing, all-or-nothing
+    // Check what fields are being changed and verify permissions
+    const hasContentChange = changes.title !== undefined || changes.description !== undefined;
+    const hasPriorityChange = changes.priority !== undefined;
+    const hasStatusChange = changes.status !== undefined && changes.status !== current.status;
+
+    // Map current to camelCase for policy checks
+    const currentMapped = mapRequestRow(current);
+
+    // All-or-nothing: if ANY change is forbidden, reject the entire body
+    if (hasContentChange && !canEditContent(actor, currentMapped)) {
+      throw new AppError('forbidden', 'FORBIDDEN', 'You are not allowed to edit the content of this request.');
+    }
+    if (hasPriorityChange && !canChangePriority(actor)) {
+      throw new AppError('forbidden', 'FORBIDDEN', 'You are not allowed to change the priority of this request.');
+    }
+    if (hasStatusChange && !canChangeStatus(actor)) {
+      throw new AppError('forbidden', 'FORBIDDEN', 'You are not allowed to change the status of this request.');
+    }
+
     if (isTerminal(current.status)) {
       throw new AppError('domain', 'REQUEST_IN_TERMINAL_STATUS',
         `Request ${id} is ${current.status} and can no longer be modified.`);
     }
 
-    const statusChanges = changes.status !== undefined && changes.status !== current.status;
-    if (statusChanges && !canTransition(current.status, changes.status)) {
+    if (hasStatusChange && !canTransition(current.status, changes.status)) {
       throw new AppError('domain', 'INVALID_STATUS_TRANSITION',
         `A request cannot move from ${current.status} to ${changes.status}.`);
     }
 
     const updated = await updateRequest(id, changes, client);
-    if (statusChanges) {
-      await insertStatusHistory(id, current.status, changes.status, client);
+    if (hasStatusChange) {
+      await insertStatusHistory(id, current.status, changes.status, actor.userId, client);
     }
     return updated;
   });
@@ -141,11 +215,12 @@ export async function patchRequest(id, body) {
   return mapRequestRow(row);
 }
 
-export async function getHistory(id) {
+export async function getHistory(actor, id) {
   const request = await findById(id);
   if (!request) {
     throw new AppError('resource', 'REQUEST_NOT_FOUND', `Request ${id} does not exist.`);
   }
+  assertRequesterScope(actor, request.created_by);
   const rows = await findHistory(id);
   return rows.map(mapHistoryRow);
 }

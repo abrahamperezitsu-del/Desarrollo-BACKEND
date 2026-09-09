@@ -152,3 +152,114 @@ Email duplicado → 409 genérico → evita enumeración de cuentas.
 Hash nunca en HTTP → dos capas: no se selecciona en insert, no se expone en mapper.
 JWT firmado y verificado → el sub/role del token son confiables (lo que la autenticación de la station 5 usará).
 ¿Quieres que profundice en algún punto en particular — por ejemplo el mecanismo de jose, el detalle de 23505/transacciones, o el flujo completo del AppError?
+
+8. Estación 4 (Login y JWT) — Completada ✅
+Lo implementado en esta estación:
+
+src/modules/auth/token.js
+- issueToken(user): new SignJWT({ role: user.role }) con header HS256, sub=user.id, iat, exp=3600s, iss, aud, firmado con JWT_SECRET.
+- verifyToken(token): jwtVerify con algoritmo HS256, issuer, audience — valida firma, alg, iss, aud, exp todo a la vez. Cualquier fallo = excepción genérica.
+- Payload sin secretos: solo role. JWT firmado, no cifrado.
+
+src/modules/auth/auth.service.js — login
+- Busca por email → findByEmail(email)
+- row && await verifyPassword(input.password, row.password_hash) — anti-enumeración por timing
+- Un solo error 401 INVALID_CREDENTIALS para TODO (email inexistente, password mala, etc.)
+- Respuesta: { accessToken, tokenType: "Bearer", expiresIn: TOKEN_TTL_SECONDS }
+
+src/middleware/authenticate.js (implementado aquí aunque es Station 5, necesario para validación login)
+- Authorization: Bearer <token> obligatorio
+- verifyToken (nunca solo decode)
+- Éxito: req.auth = { userId: payload.sub, role: payload.role }
+- Fallos: 401 AUTHENTICATION_REQUIRED (sin Bearer) o 401 INVALID_TOKEN (cualquier verificación falla)
+
+Validación: npm run validate:class-05 -- --stage login → 2/2 PASS
+
+9. Estación 5 (Middleware de Autenticación) — Completada ✅
+Lo implementado:
+
+src/middleware/authenticate.js
+- Lee Authorization header, exige "Bearer " exacto
+- Sin header / Basic / Bearer vacío → 401 AUTHENTICATION_REQUIRED
+- verifyToken(token) — NUNCA solo decode (jwtVerify valida firma, alg, iss, aud, exp)
+- Cualquier fallo verificación → 401 INVALID_TOKEN genérico (token alterado, expirado, otra firma, otra aud)
+- Éxito: req.auth = { userId: payload.sub, role: payload.role } — única identidad confiable
+
+src/app.js
+- Importa authenticate
+- app.use('/requests', authenticate, requestsRoutes) — protege todo el módulo requests
+
+src/modules/requests/requests.routes.js
+- Pasa req.auth como primer argumento a todos los services:
+  listRequests(req.auth, ...), getRequest(req.auth, id), createRequest(req.auth, body),
+  patchRequest(req.auth, id, body), getHistory(req.auth, id)
+
+src/modules/requests/requests.service.js
+- Todas las funciones aceptan actor como primer parámetro (preparado para Station 6)
+
+src/modules/auth/auth.service.js — getCurrentUser
+- findById(actor.userId) → mapUserRow → { id, email, role }
+- GET /auth/me → 200 con identidad del token
+
+Validación: npm run validate:class-05 -- --stage authentication → 2/2 PASS
+- Protected endpoints: PASS
+- Token verification: PASS
+
+10. Estación 6 (Propiedad) — Completada ✅
+Lo implementado:
+
+src/modules/requests/requests.store.js
+- REQUEST_COLUMNS incluye created_by
+- findAll: filtro createdBy en WHERE (SQL, no JS)
+- insertRequest: recibe createdBy, lo inserta
+- insertStatusHistory: recibe changedBy, escribe changed_by (migración 005)
+- findHistory: selecciona changed_by
+
+src/modules/requests/request.mapper.js
+- mapRequestRow: expone createdBy: row.created_by ?? null
+- mapHistoryRow: expone changedBy: row.changed_by ?? null
+
+src/modules/requests/requests.service.js
+- assertRequesterScope(actor, createdBy): helper centralizado
+  - Legacy (created_by IS NULL): solo agent ve → requester 404
+  - Requester: solo propios (created_by === actor.userId)
+  - Extranjero → 404 REQUEST_NOT_FOUND idéntico (no revela existencia)
+- listRequests: requester → scopeFilters.createdBy = actor.userId; agent → sin filtro
+- getRequest/getHistory: assertRequesterScope tras findById
+- createRequest:
+  - Rechaza SERVER_CONTROLLED_FIELDS (id, createdBy, createdAt, updatedAt, changedBy) → 400
+  - Rechaza status en POST → 400 SERVER_CONTROLLED_FIELD
+  - createdBy = actor.userId (nunca del body)
+  - insertStatusHistory con changedBy = actor.userId
+- patchRequest: insertStatusHistory con changedBy = actor.userId
+
+Validación: npm run validate:class-05 -- --stage ownership → 2/2 PASS
+- Trusted request ownership: PASS
+- Requester isolation: PASS
+
+11. Estación 7 (Permisos/Autorización) — Completada ✅
+Lo implementado:
+
+src/modules/requests/request.policy.js — 7 funciones puras (sin SQL, sin HTTP)
+- canListAllRequests(actor): agent only
+- canViewRequest(actor, request): agent any · requester own only (legacy null never matches)
+- canViewHistory(actor, request): same as canViewRequest
+- canCreateRequest(actor): requester only (agents cannot create)
+- canEditContent(actor, request): requester + own + open status
+- canChangePriority(actor): agent only
+- canChangeStatus(actor): agent only (state machine still applies)
+
+src/modules/requests/requests.service.js — patchRequest con autorización all-or-nothing
+- Rechaza changedBy en body → 400 SERVER_CONTROLLED_FIELD
+- Mapea current row a camelCase para policy checks (mapRequestRow)
+- Verifica permisos ANTES de escribir:
+  - hasContentChange + !canEditContent → 403 FORBIDDEN
+  - hasPriorityChange + !canChangePriority → 403 FORBIDDEN
+  - hasStatusChange + !canChangeStatus → 403 FORBIDDEN
+- Si CUALQUIER cambio prohibido → rechaza TODO el body (cero cambios)
+- Conserva 409 para terminal states y transiciones inválidas (para TODOS los roles)
+- insertStatusHistory con changedBy = actor.userId en cada transición
+
+Validación: npm run validate:class-05 -- --stage authorization → 2/2 PASS
+- Agent permissions: PASS
+- Status rules preserved: PASS

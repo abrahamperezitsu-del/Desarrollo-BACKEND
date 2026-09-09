@@ -2,8 +2,7 @@
 // representation the contract promises (camelCase). A row is not
 // automatically the HTTP response.
 //
-// STARTER NOTE — Station 6: once created_by and changed_by exist in the
-// rows, expose them here as createdBy / changedBy. Nothing else changes.
+// Station 6: expose createdBy / changedBy from the rows.
 
 export function mapRequestRow(row) {
   return {
@@ -12,6 +11,7 @@ export function mapRequestRow(row) {
     description: row.description,
     priority: row.priority,
     status: row.status,
+    createdBy: row.created_by ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -21,6 +21,7 @@ export function mapHistoryRow(row) {
   return {
     previousStatus: row.previous_status,
     newStatus: row.new_status,
+    changedBy: row.changed_by ?? null,
     changedAt: row.changed_at
   };
 }
