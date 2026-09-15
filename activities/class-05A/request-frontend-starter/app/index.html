@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solicitudes — /app</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <strong>Solicitudes</strong>
+    <div id="session-box" class="session-box">
+      <span id="session-user" class="session-user">Sin sesión</span>
+      <button id="logout-btn" hidden type="button">Salir</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- PANEL DE AUTENTICACIÓN -->
+    <section id="auth-panel" class="panel">
+      <h2>Entrar</h2>
+      <form id="login-form" class="stack">
+        <label>Email <input name="email" type="email" required autocomplete="username"></label>
+        <label>Password <input name="password" type="password" required minlength="15" maxlength="128" autocomplete="current-password"></label>
+        <button type="submit">Iniciar sesión</button>
+      </form>
+      <p id="auth-feedback" class="feedback" role="status"></p>
+      <p class="switch-link">¿No tienes cuenta? <a id="show-register" href="#">Regístrate</a></p>
+
+      <form id="register-form" class="stack" hidden>
+        <h3>Registro (solo requester)</h3>
+        <label>Email <input name="email" type="email" required autocomplete="username"></label>
+        <label>Password <input name="password" type="password" required minlength="15" maxlength="128" autocomplete="new-password"></label>
+        <button type="submit">Crear cuenta</button>
+      </form>
+      <p class="switch-link" id="login-link" hidden>¿Ya tienes cuenta? <a id="show-login" href="#">Entra aquí</a></p>
+    </section>
+
+    <!-- PANEL DE SOLICITUDES (requester + agent) -->
+    <section id="requests-panel" class="panel" hidden>
+      <div class="panel-header">
+        <h2>Mis solicitudes</h2>
+        <button id="create-request-btn" type="button" class="primary-btn">Nueva solicitud</button>
+      </div>
+
+      <!-- Formulario crear solicitud -->
+      <form id="create-request-form" class="stack form-inline" hidden>
+        <h3>Crear solicitud</h3>
+        <label>Título <input id="create-title" type="text" required maxlength="200"></label>
+        <label>Descripción <textarea id="create-description" rows="3"></textarea></label>
+        <label>Prioridad
+          <select id="create-priority">
+            <option value="low">Baja</option>
+            <option value="medium" selected>Media</option>
+            <option value="high">Alta</option>
+            <option value="critical">Crítica</option>
+          </select>
+        </label>
+        <div class="form-actions">
+          <button type="submit">Crear</button>
+          <button id="cancel-create-btn" type="button" class="secondary-btn">Cancelar</button>
+        </div>
+        <p id="create-request-feedback" class="feedback" role="status"></p>
+      </form>
+
+      <!-- Filtros -->
+      <form id="filter-form" class="filter-bar">
+        <label>Estado
+          <select id="filter-status">
+            <option value="">Todos</option>
+            <option value="open">Abierta</option>
+            <option value="in_progress">En progreso</option>
+            <option value="resolved">Resuelta</option>
+            <option value="cancelled">Cancelada</option>
+            <option value="reopened">Reabierta</option>
+          </select>
+        </label>
+        <label>Prioridad
+          <select id="filter-priority">
+            <option value="">Todas</option>
+            <option value="low">Baja</option>
+            <option value="medium">Media</option>
+            <option value="high">Alta</option>
+            <option value="critical">Crítica</option>
+          </select>
+        </label>
+        <button type="submit">Filtrar</button>
+        <button id="clear-filters-btn" type="button" class="secondary-btn">Limpiar</button>
+      </form>
+
+      <p id="requests-state" class="feedback" role="status">—</p>
+      <ul id="requests-list" class="request-list"></ul>
+    </section>
+
+    <!-- PANEL DE DETALLE -->
+    <section id="detail-panel" class="panel" hidden>
+      <div class="panel-header">
+        <h2>Detalle de solicitud</h2>
+        <button id="close-detail-btn" type="button" class="secondary-btn">Volver</button>
+      </div>
+      <p id="detail-feedback" class="feedback" role="status"></p>
+      <div id="detail-content"></div>
+
+      <!-- Formulario editar (requester, propia, abierta) -->
+      <form id="edit-request-form" class="stack form-inline" hidden>
+        <h3>Editar título y descripción</h3>
+        <label>Título <input id="edit-title" type="text" required maxlength="200"></label>
+        <label>Descripción <textarea id="edit-description" rows="3"></textarea></label>
+        <div class="form-actions">
+          <button type="submit">Guardar</button>
+          <button id="cancel-edit-btn" type="button" class="secondary-btn">Cancelar</button>
+        </div>
+        <p id="edit-request-feedback" class="feedback" role="status"></p>
+      </form>
+
+      <!-- Acciones de Agent -->
+      <div id="agent-actions" class="agent-actions" hidden>
+        <h3>Acciones de agente</h3>
+
+        <form id="change-priority-form" class="stack form-inline">
+          <h4>Cambiar prioridad</h4>
+          <label>Nueva prioridad
+            <select id="priority-select">
+              <option value="low">Baja</option>
+              <option value="medium">Media</option>
+              <option value="high">Alta</option>
+              <option value="critical">Crítica</option>
+            </select>
+          </label>
+          <button type="submit">Actualizar prioridad</button>
+          <p id="change-priority-feedback" class="feedback" role="status"></p>
+        </form>
+
+        <form id="change-status-form" class="stack form-inline">
+          <h4>Cambiar estado (transiciones válidas)</h4>
+          <label>Nuevo estado
+            <select id="status-select">
+              <option value="" disabled selected>Carga una solicitud primero</option>
+            </select>
+          </label>
+          <button type="submit">Actualizar estado</button>
+          <p id="change-status-feedback" class="feedback" role="status"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- PANEL DE HISTORIAL -->
+    <section id="history-panel" class="panel" hidden>
+      <div class="panel-header">
+        <h2>Historial de cambios</h2>
+        <button id="close-history-btn" type="button" class="secondary-btn">Volver</button>
+      </div>
+      <p id="history-feedback" class="feedback" role="status"></p>
+      <div id="history-content"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
