@@ -1,0 +1,28 @@
+Pega aqui la salida final de: npm run validate:class-06
+(la salida no contiene secretos; no agregues capturas de tu .env)
+
+
+npm test
+npm notice run class-06-request-api@6.0.0 test
+npm notice run node --test --test-concurrency=1 'test/*.test.js'
+✔ registering a new account answers 201 with role requester (3160.166603ms)
+✔ registering the same email twice answers a generic 409 (905.888998ms)
+✔ sending a role at registration is rejected explicitly (6.825369ms)
+✔ logging in with valid credentials answers a Bearer token (626.874994ms)
+✔ logging in with a wrong password answers a generic 401 (567.496114ms)
+✔ GET /auth/me reports the identity carried by the token (644.685232ms)
+✔ GET /auth/me without a token answers 401 (2.617058ms)
+✔ a requester can create a request and becomes its owner (2333.370233ms)
+✔ the owner can read their own request (1577.725101ms)
+✔ a requester cannot access another user request (1727.281211ms)
+✔ the collection requires a Bearer token (11.920182ms)
+✔ a requester cannot change the priority, even of their own request (1840.202804ms)
+✔ an agent can move a request through a valid transition (2497.887666ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18223.996063
