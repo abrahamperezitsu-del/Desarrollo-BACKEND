@@ -1,0 +1,21 @@
+info:
+  name: efsf
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:5432/requests/not-a-number
+  headers:
+    - name: authentication
+      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicmVxdWVzdGVyIiwic3ViIjoiNzUwZmM3ZDAtNWQ0Ni00ZTg4LWE1NzgtZjY5MTIwM2U2OWE0IiwiaWF0IjoxNzkwMDk1NDI4LCJleHAiOjE3OTAwOTkwMjgsImlzcyI6ImJhY2tlbmQtY291cnNlLWFwaSIsImF1ZCI6ImJhY2tlbmQtY291cnNlLWNsaWVudCJ9.SwYRwSp5nlanBEjmZyM71Eu0Chjlk9Z6TW_UAPESgqY
+  body:
+    type: json
+    data: ""
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

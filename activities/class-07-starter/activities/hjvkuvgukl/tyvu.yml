@@ -1,0 +1,27 @@
+info:
+  name: tyvu
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:5432/request/not-a-number
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicmVxdWVzdGVyIiwic3ViIjoiNzUwZmM3ZDAtNWQ0Ni00ZTg4LWE1NzgtZjY5MTIwM2U2OWE0IiwiaWF0IjoxNzkwMDk1NDI4LCJleHAiOjE3OTAwOTkwMjgsImlzcyI6ImJhY2tlbmQtY291cnNlLWFwaSIsImF1ZCI6ImJhY2tlbmQtY291cnNlLWNsaWVudCJ9.SwYRwSp5nlanBEjmZyM71Eu0Chjlk9Z6TW_UAPESgqY
+  body:
+    type: json
+    data: |-
+      { 
+      "email":"ana.requester.seed@example.test", 
+      "password":"ana clave del taller 06" 
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicmVxdWVzdGVyIiwic3ViIjoiNzUwZmM3ZDAtNWQ0Ni00ZTg4LWE1NzgtZjY5MTIwM2U2OWE0IiwiaWF0IjoxNzkwMDk1NDI4LCJleHAiOjE3OTAwOTkwMjgsImlzcyI6ImJhY2tlbmQtY291cnNlLWFwaSIsImF1ZCI6ImJhY2tlbmQtY291cnNlLWNsaWVudCJ9.SwYRwSp5nlanBEjmZyM71Eu0Chjlk9Z6TW_UAPESgqY
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

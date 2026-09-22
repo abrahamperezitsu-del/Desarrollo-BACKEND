@@ -1,0 +1,98 @@
+CLASS 07 INCIDENT VALIDATION
+
+Baseline
+[01/12] Existing contract preserved .......... PASS
+
+Input and errors
+[02/12] Invalid id returns 400 ............... FAIL
+[03/12] Invalid priority returns 400 ......... FAIL
+[04/12] Unknown request returns 404 .......... PASS
+[05/12] Invalid transition returns 409 ....... PASS
+[06/12] Unexpected errors return 500 ......... PASS
+[07/12] Internal details remain hidden ....... PASS
+
+Traceability
+[08/12] Response contains request id ......... FAIL
+[09/12] Log contains the same request id ..... FAIL
+[10/12] Authorization header is not logged ... PASS
+
+Operation
+[11/12] Health endpoint responds ............. FAIL
+[12/12] Readiness checks PostgreSQL .......... FAIL
+
+Cleanup
+Temporary validation data removed successfully.
+
+[FAIL] Invalid id returns 400
+
+Expected:
+400 INVALID_REQUEST_ID for text, decimals, zero and negatives
+
+Received:
+GET /requests/not-a-number -> 500 INTERNAL_ERROR
+
+Review:
+- where request.params.id is first read
+- whether the COMPLETE value is validated (parseInt accepts "12abc")
+- whether SQL executes before validation
+
+[FAIL] Invalid priority returns 400
+
+Expected:
+PATCH { priority: "critical" } -> 400 INVALID_PRIORITY
+
+Received:
+500 INTERNAL_ERROR
+
+Review:
+- whether the application validates priority BEFORE running SQL
+- the PostgreSQL constraint is the second defense, not the contract
+
+[FAIL] Response contains request id
+
+Expected:
+X-Request-Id header and the SAME requestId inside the error body
+
+Received:
+header missing, body missing
+
+Review:
+- a middleware must assign the id before routes run
+- the error handler must include it in every error body
+
+[FAIL] Log contains the same request id
+
+Expected:
+one JSON log line whose requestId equals the response header
+
+Received:
+no X-Request-Id header
+
+Review:
+- the request logger must log every finished request
+- logger output must be one valid JSON object per line
+
+[FAIL] Health endpoint responds
+
+Expected:
+GET /health -> 200 { "status": "ok" } with the database down
+
+Received:
+404 null
+
+Review:
+- liveness must not depend on PostgreSQL
+- /health answers "the process is alive", nothing more
+
+[FAIL] Readiness checks PostgreSQL
+
+Expected:
+GET /ready -> 200 { status: "ready", database: "available" }
+
+Received:
+404 null
+
+Review:
+- readiness must run a real (cheap) check such as SELECT 1
+
+FINAL RESULT: FAILED (6/12)
