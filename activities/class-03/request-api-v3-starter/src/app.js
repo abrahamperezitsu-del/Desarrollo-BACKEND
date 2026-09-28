@@ -1,0 +1,12 @@
+import express from 'express';
+import requestsRoutes from './modules/requests/requests.routes.js';
+
+const app = express();
+
+// Parses incoming JSON bodies into req.body.
+app.use(express.json());
+
+// Every route inside the router is served under /requests.
+app.use('/requests', requestsRoutes);
+
+export default app;
