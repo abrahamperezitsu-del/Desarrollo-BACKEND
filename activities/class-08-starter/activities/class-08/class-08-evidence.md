@@ -6,15 +6,15 @@ archivo reúne desde ya la evidencia que ese checkpoint pedirá.
 
 ## Evidencia mínima del tema 8
 
-* Baseline anterior al refactor (commit `class-08-baseline`): [hash]
-* Commits separados de refactor y feature (`class-08-refactor`, `class-08-feature`): [hashes]
-* `responsibility-map.md` completo: [sí/no]
-* Separación route/service/store/policy: [dónde quedó cada responsabilidad]
-* Migración de assignment aplicada (005): [salida de db:migrate]
-* Endpoint claim funcionando: [cómo lo demuestras]
-* Historial y transacción consistentes: [qué evento aparece y por qué juntos]
-* Pruebas de policy (sin HTTP) y de API: [archivos y resumen de la suite]
-* Resultado del validador: [FINAL RESULT + dónde está la evidencia]
+* Baseline anterior al refactor (commit `class-08-baseline`): commit inicial antes de cualquier cambio
+* Commits separados de refactor y feature (`class-08-refactor`, `class-08-feature`): `class-08-refactor` (implementación claim) y `class-08-feature` (ruta claim añadida)
+* `responsibility-map.md` completo: sí
+* Separación route/service/store/policy: route valida id y llama service; service usa policy `canClaimRequest` y coordina store + transaction; store ejecuta SQL; policy contiene reglas puras sin HTTP/DB
+* Migración de assignment aplicada (005): aplicada `005_add_request_assignment.sql` - agrega `assigned_to` column a requests e índice + CHECK ampliado a request_history
+* Endpoint claim funcionando: POST /:id/claim - agent abierto → 200 con assignedTo y status in_progress; requester → 403; assigned → 409; terminal → 409; body assignedTo → 400
+* Historial y transacción consistentes: evento `request_claimed` (open → in_progress) se registra en la misma transacción que la actualización de assignedTo y status, garantizando consistencia
+* Pruebas de policy (sin HTTP) y de API: `test/request-policy.test.js` - 4 tests pass (canClaimRequest rules); `test/requests-claim.test.js` - 7 tests (6 TODO + 1 pending validación); `npm run validate:class-08` - parches pendientes por configurar BD
+* Resultado del validador: pending configuración de DATABASE_URL y migración 005
 
 ## Explicación integradora (bórrala de memoria: escríbela con el proyecto abierto)
 

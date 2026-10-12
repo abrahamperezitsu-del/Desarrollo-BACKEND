@@ -19,7 +19,8 @@ import {
   canCreateRequest,
   canEditContent,
   canChangePriority,
-  canChangeStatus
+  canChangeStatus,
+  canClaimRequest
 } from './request.policy.js';
 import { AppError } from '../../app-error.js';
 
@@ -206,6 +207,49 @@ export async function patchRequest(actor, id, body) {
         changedBy: actor.userId
       }, client);
     }
+    return updated;
+  });
+
+export async function claimRequest(actor, id) {
+  const request = await findById(id);
+  if (!request) {
+    return { status: 404, body: { error: { code: 'REQUEST_NOT_FOUND', message: `Request ${id} does not exist.` } } };
+  }
+
+  const policyResult = canClaimRequest({ actor, request });
+
+  if (!policyResult.allowed) {
+    const reason = policyResult.reason;
+    let code, message;
+    switch (reason) {
+      case 'NOT_AGENT':
+        code = 'FORBIDDEN';
+        message = 'Only an agent can claim a request.';
+        break;
+      case 'ALREADY_ASSIGNED':
+        code = 'REQUEST_ALREADY_ASSIGNED';
+        message = 'The request is already assigned.';
+        break;
+      case 'NOT_OPEN':
+        code = 'REQUEST_ALREADY_ASSIGNED';
+        message = 'Only open requests can be claimed.';
+        break;
+      default:
+        code = 'CONTRACT';
+        message = 'Cannot claim this request.';
+    }
+    throw new AppError('contract', code, message);
+  }
+
+  const row = await withTransaction(async (client) => {
+    const updated = await updateRequest(id, { assignedTo: actor.userId, status: 'in_progress' }, client);
+    await insertHistoryEvent({
+      requestId: id,
+      type: 'request_claimed',
+      fromStatus: 'open',
+      toStatus: 'in_progress',
+      changedBy: actor.userId
+    }, client);
     return updated;
   });
 

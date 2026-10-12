@@ -12,7 +12,8 @@ import {
   listRequests,
   getRequest,
   createRequest,
-  patchRequest
+  patchRequest,
+  claimRequest
 } from './requests.service.js';
 import { parseIdParam } from '../../http/parse-id.js';
 
@@ -96,10 +97,27 @@ router.get('/:id/history', async (req, res) => {
   res.status(200).json(events);
 });
 
-// TODO(FEATURE-801): POST /:id/claim — the new business action. Before
-// wiring it here, decide WHERE each responsibility will live. The route's
-// job is small: validate the id, read the authenticated actor, call the
-// service, answer 200 with the result.
+// Claim a request (FEATURE-801)
+router.post('/:id/claim', async (req, res) => {
+  const id = parseIdParam(req.params.id);
+  const result = await claimRequest(req.auth, id);
+  if (result.status === 400) {
+    return res.status(400).json(result);
+  }
+  if (result.status === 401) {
+    return res.status(401).json(result);
+  }
+  if (result.status === 403) {
+    return res.status(403).json(result);
+  }
+  if (result.status === 404) {
+    return res.status(404).json(result);
+  }
+  if (result.status === 409) {
+    return res.status(409).json(result);
+  }
+  res.status(200).json(result);
+});
 
 router.post('/', async (req, res) => {
   res.status(201).json(await createRequest(req.auth, req.body));
