@@ -1,0 +1,96 @@
+{
+"protocolVersion": "ITSU-KNOWLEDGE-09-1.0",
+"rubricVersion": "BACKEND-01-08-K1",
+"evaluationId": "K09-abrahamperez-itsu-nogit00",
+"studentId": "abrahamperez-itsu",
+"commit": "nogit00",
+"variant": "C",
+"status": "COMPLETE",
+"action": "SUPPORT",
+"questions": [
+{
+"questionId": "Q1",
+"topics": ["HTTP", "request flow", "domain logic"],
+"levels": { "conceptual": 3, "grounding": 3, "reasoning": 3, "verification": 2 },
+"evidence": ["Las preocupaciones de HTTP terminan en el Controlador, y la lógica pura del dominio comienza exactamente en el Caso de Uso."],
+"strength": "Clara distinción entre las capas de transporte HTTP y la lógica de dominio en la arquitectura.",
+"gap": "",
+"rectification": "",
+"confidence": "high"
+},
+{
+"questionId": "Q2",
+"topics": ["Transactions", "invariants", "COMMIT/ROLLBACK"],
+"levels": { "conceptual": 3, "grounding": 3, "reasoning": 2, "verification": 2 },
+"evidence": ["Cada cambio de estado en la tabla requests debe tener de forma obligatoria un registro en la tabla request_history para garantizar estabilidad y el rollback"],
+"strength": "Identificación correcta de las funciones de almacenamiento y la necesidad de atomicidad.",
+"gap": "Confusión inicial sobre el impacto del carácter stateless de HTTP en la persistencia de la base de datos.",
+"rectification": "Se aclaró que la persistencia y la consistencia residen en el motor de base de datos a través de transacciones, independientemente de que HTTP sea stateless.",
+"confidence": "medium"
+},
+{
+"questionId": "Q3",
+"topics": ["Authentication", "Authorization", "HTTP status codes"],
+"levels": { "conceptual": 3, "grounding": 2, "reasoning": 3, "verification": 2 },
+"evidence": ["El código correcto es 403 Forbidden porque el usuario ya está autenticado pero carece de permisos para modificar ese recurso"],
+"strength": "Precisión en la diferenciación conceptual entre autenticación y autorización y el uso correcto del código 403.",
+"gap": "Localización menos precisa de los archivos específicos de autorización dentro del repositorio.",
+"rectification": "",
+"confidence": "high"
+},
+{
+"questionId": "Q4",
+"topics": ["Validation", "Error handling"],
+"levels": { "conceptual": 1, "grounding": 1, "reasoning": 1, "verification": 1 },
+"evidence": ["no se, siguiente"],
+"strength": "",
+"gap": "Desconocimiento o falta de dominio sobre la capa de validación estructural y transformación de errores en Express.",
+"rectification": "",
+"confidence": "high"
+},
+{
+"questionId": "Q5",
+"topics": ["Concurrency", "Race conditions", "Database locking"],
+"levels": { "conceptual": 2, "grounding": 1, "reasoning": 1, "verification": 1 },
+"evidence": ["copiaria la respuesta a la solicitud de forma aislada y la enviaria como respuesta a ambos"],
+"strength": "Reconocimiento del escenario concurrente.",
+"gap": "Falta de comprensión sobre cómo se manejan las condiciones de carrera a nivel de base de datos mediante bloqueos o restricciones condicionales.",
+"rectification": "",
+"confidence": "medium"
+}
+],
+"priorityGaps": [
+"Validación estructural de datos de entrada y manejo centralizado de errores en Express.",
+"Manejo de concurrencia y prevención de condiciones de carrera a nivel de base de datos."
+],
+"strengths": [
+"Sólida comprensión de la separación de responsabilidades entre controladores, servicios y lógica de dominio.",
+"Buen dominio de los conceptos de transaccionalidad (COMMIT/ROLLBACK) y control de acceso (Autenticación vs Autorización)."
+],
+"recommendedStudyActions": [
+"Estudiar librerías de validación de esquemas (como Joi o Zod) y middlewares de manejo de errores en Node.js/Express.",
+"Repasar conceptos de concurrencia en bases de datos relacionales, incluyendo bloqueos pesimistas (FOR UPDATE) y actualizaciones condicionales.",
+"Profundizar en la trazabilidad y auditoría de eventos transaccionales en arquitecturas backend."
+],
+"reviewSignals": ["SUPPORT_REQUIRED"],
+"teacherReview": {
+"priority": "medium",
+"oralVerificationRecommended": true,
+"questions": [
+{
+"question": "¿En qué capa de Express se debe ubicar el middleware de validación de esquemas antes de llegar al controlador?",
+"expectedAnswer": "Inmediatamente después de las rutas y antes de los controladores, típicamente utilizando un validador de esquemas."
+},
+{
+"question": "¿Cómo previene una cláusula WHERE condicional (ej. WHERE id = $1 AND assigned_to IS NULL) una condición de carrera al reclamar un recurso?",
+"expectedAnswer": "Garantizando a nivel atómico que solo la primera transacción que encuentre el registro disponible efectúe el cambio, afectando 0 filas en los intentos concurrentes posteriores."
+}
+],
+"minimumExpectedAnswers": [
+"Ubicación de validadores en el flujo de peticiones Express.",
+"Uso de bloqueos o condiciones atómicas en SQL para evitar condiciones de carrera."
+],
+"reason": "El estudiante muestra excelente base arquitectónica y transaccional, pero requiere refuerzo en validación de entradas y manejo de concurrencia.",
+"digest": "Estudiante con fuerte dominio de arquitectura de capas y transacciones, pero requiere apoyo en validación estructural y control de concurrencia en base de datos."
+}
+}
